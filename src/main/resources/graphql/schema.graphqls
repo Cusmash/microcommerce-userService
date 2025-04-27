@@ -1,0 +1,27 @@
+type User {
+    id: ID!
+    email: String!
+    firstName: String!
+    lastName: String!
+    role: String!
+    active: Boolean!
+}
+
+input UserInputDTO {
+    firstName: String!
+    lastName: String!
+    email: String!
+    password: String!
+}
+
+type Mutation {
+    signUp(signUpInput: SignUpInputDTO!): AuthResponseDTO!
+    signIn(signInInput: SignInInputDTO!): AuthResponseDTO!
+    logout: Boolean!
+}
+
+type Query {
+    getUserProfile: UserProfileDTO
+}
+
+

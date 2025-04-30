@@ -1,4 +1,4 @@
-package com.bread.userservice.auth.dto;
+package com.bread.userservice.dto.auth;
 
 import lombok.Data;
 import jakarta.validation.constraints.Email;

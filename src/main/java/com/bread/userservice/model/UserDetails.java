@@ -4,16 +4,17 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document(collection = "users")
+@Document(collection = "user_details")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class UserDetails {
     @Id
     private String id;
-    private String email;
-    private String password;
-    private Boolean acceptedTerms;
-    private Boolean acceptedPromotions;
+
+    private String firstName;
+    private String lastName;
+    private String phone;
+    private String address;
 }

@@ -1,27 +1,42 @@
-type User {
-    id: ID!
-    email: String!
-    firstName: String!
-    lastName: String!
-    role: String!
-    active: Boolean!
+type Mutation {
+    signUp(signUpInput: SignUpInputDTO!): AuthResponseDTO!
+    signIn(signInInput: SignInInputDTO!): AuthResponseDTO!
+    logout(token: String!): String
+    deleteAccount(token: String!): Boolean!
 }
 
-input UserInputDTO {
+type Query {
+    getUserDetails: UserDetailsResponseDTO
+}
+
+input SignUpInputDTO {
+    email: String!
+    password: String!
     firstName: String!
     lastName: String!
+    acceptedTerms: Boolean
+    acceptedPromotions: Boolean
+}
+
+input SignInInputDTO {
     email: String!
     password: String!
 }
 
-type Mutation {
-    signUp(signUpInput: SignUpInputDTO!): AuthResponseDTO!
-    signIn(signInInput: SignInInputDTO!): AuthResponseDTO!
-    logout: Boolean!
+input UpdateUserDetailsDTO {
+    firstName: String
+    lastName: String
+    phone: String
+    address: String
 }
 
-type Query {
-    getUserProfile: UserProfileDTO
+type AuthResponseDTO {
+    token: String!
 }
 
-
+type UserDetailsResponseDTO {
+    firstName: String
+    lastName: String
+    phone: String
+    address: String
+}

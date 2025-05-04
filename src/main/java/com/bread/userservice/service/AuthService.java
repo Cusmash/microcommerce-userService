@@ -8,5 +8,6 @@ public interface AuthService {
     AuthResponseDTO signUp(SignUpInputDTO signUpInputDTO);
     AuthResponseDTO signIn(SignInInputDTO signInInputDTO);
     void logout(String token);
+    Boolean deleteAccount(String token);
 }
 

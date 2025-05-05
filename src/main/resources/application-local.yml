@@ -1,0 +1,9 @@
+spring:
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: userdb
+    redis:
+      host: 127.0.0.1
+      port: 6379

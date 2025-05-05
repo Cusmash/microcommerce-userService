@@ -36,20 +36,25 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponseDTO signIn(SignInInputDTO input) {
         User user = userRepository.findByEmail(input.getEmail())
-                .orElseThrow(CustomGraphQLException::invalidCredentials);
+                .orElseThrow(() -> {
+                    log.warn("user no encontrado: {}", input.getEmail());
+                    return CustomGraphQLException.invalidCredentials();
+                });
 
         boolean passwordMatches = BCrypt.checkpw(input.getPassword(), user.getPassword());
         if (!passwordMatches) {
+            log.warn("wrongPass email {}", input.getEmail());
             throw CustomGraphQLException.invalidCredentials();
         }
 
         String token = jwtUtils.generateJwtToken(user.getId());
-
         String redisKey = "auth:" + token;
+
         try {
             redisTemplate.opsForValue().set(redisKey, user.getId(), Duration.ofMillis(jwtProperties.getExpirationMs()));
+            log.info("token guardado userId: {}", user.getId());
         } catch (Exception ex) {
-            log.error("No se pudo conectar a Redis", ex);
+            log.error("no se pudo guardar userId: {}", user.getId(), ex);
         }
 
         return new AuthResponseDTO(token);
@@ -58,6 +63,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponseDTO signUp(SignUpInputDTO input) {
         if (userRepository.existsByEmail(input.getEmail())) {
+            log.warn("el email {} ya esta registrado", input.getEmail());
             throw CustomGraphQLException.userAlreadyExists();
         }
 
@@ -98,13 +104,16 @@ public class AuthServiceImpl implements AuthService {
         String key = "auth:" + token;
         Boolean deleted = redisTemplate.delete(key);
         if (deleted == null || !deleted) {
+            log.warn("token no encontrado {}", token);
             throw CustomGraphQLException.tokenInvalid();
         }
+        log.info("logout exitoso {}", token);
     }
 
     @Override
     public Boolean deleteAccount(String token) {
         String userId = jwtUtils.getUserIdFromJwtToken(token);
+        log.info("intentando eliminar cuenta {}", userId);
         if (!userRepository.existsById(userId)) {
             throw CustomGraphQLException.notFound(userId);
         }
@@ -112,13 +121,17 @@ public class AuthServiceImpl implements AuthService {
         userRepository.deleteById(userId);
         userDetailsRepository.deleteById(userId);
         redisTemplate.delete("auth:" + token);
+        log.info("cuenta eliminada exitosamente {}", userId);
         return true;
     }
 
     @Override
     public boolean forgotPassword(String email) {
         User user = userRepository.findByEmail(email)
-            .orElseThrow(CustomGraphQLException::invalidCredentials);
+            .orElseThrow(() ->{
+                log.warn("recuperación de contraseña: {}", email);
+                return CustomGraphQLException.invalidCredentials();
+            });
 
         String token = jwtUtils.generateToken(user.getId(), Duration.ofMinutes(15));
         redisTemplate.opsForValue().set("reset:" + token, user.getId(), Duration.ofMinutes(15));
@@ -134,6 +147,7 @@ public class AuthServiceImpl implements AuthService {
         String userId = (String) redisTemplate.opsForValue().get(key);
 
         if (userId == null) {
+            log.warn("token inválido {}", token);
             throw CustomGraphQLException.tokenInvalid();
         }
 
@@ -143,7 +157,7 @@ public class AuthServiceImpl implements AuthService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         redisTemplate.delete(key);
-
+        log.info("contraseña restablecida exitosamente {}", userId);
         return true;
     }
 }

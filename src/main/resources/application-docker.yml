@@ -1,0 +1,9 @@
+spring:
+  data:
+    mongodb:
+      host: mongo_microcommerce
+      port: 27017
+      database: userdb
+    redis:
+      host: redis_microcommerce
+      port: 6379

@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  mongo_microcommerce:
+    image: mongo:6.0
+    container_name: mongo_microcommerce
+    ports:
+      - "27017:27017"
+    networks:
+      - microcommerce_net
+
+  redis_microcommerce:
+    image: redis:latest
+    container_name: redis_microcommerce
+    ports:
+      - "6379:6379"
+    networks:
+      - microcommerce_net
+
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: microcommerce-user-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mongo_microcommerce
+      - redis_microcommerce
+    networks:
+      - microcommerce_net
+
+networks:
+  microcommerce_net:
+    driver: bridge

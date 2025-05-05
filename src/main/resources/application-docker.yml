@@ -7,8 +7,8 @@ spring:
     redis:
       host: redis_microcommerce
       port: 6379
-    kafka:
-    bootstrap-servers: kafka_microcommerce:9092
+  kafka:
+    bootstrap-servers: ${KAFKA_HOST:kafka_microcommerce:9092}
     consumer:
       group-id: user-service-group
       auto-offset-reset: earliest

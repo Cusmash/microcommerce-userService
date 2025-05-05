@@ -6,15 +6,19 @@ import com.bread.userservice.dto.auth.SignInInputDTO;
 import com.bread.userservice.dto.auth.SignUpInputDTO;
 import com.bread.userservice.exception.CustomGraphQLException;
 import com.bread.userservice.model.User;
+import com.bread.userservice.model.UserEvent;
+import com.bread.userservice.model.UserEventType;
 import com.bread.userservice.repository.UserDetailsRepository;
 import com.bread.userservice.repository.UserRepository;
 import com.bread.userservice.service.AuthService;
 import com.bread.userservice.util.JwtUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,6 +36,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtProperties jwtProperties;
     private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
     private final PasswordEncoder passwordEncoder;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
+    private static final String USER_EVENTS_TOPIC = "user-events";
 
     @Override
     public AuthResponseDTO signIn(SignInInputDTO input) {
@@ -92,6 +99,10 @@ public class AuthServiceImpl implements AuthService {
         try {
             redisTemplate.opsForValue().set("auth:" + token, userId,
                 java.time.Duration.ofMillis(jwtProperties.getExpirationMs()));
+
+            UserEvent event = new UserEvent(UserEventType.USER_SIGNUP.name(), userId, input.getEmail(),
+                input.getFirstName(), input.getLastName(), null);
+            kafkaTemplate.send(USER_EVENTS_TOPIC, userId, objectMapper.writeValueAsString(event));
         } catch (Exception ex) {
             log.error("No se pudo conectar a Redis", ex);
         }
@@ -122,6 +133,13 @@ public class AuthServiceImpl implements AuthService {
         userDetailsRepository.deleteById(userId);
         redisTemplate.delete("auth:" + token);
         log.info("cuenta eliminada exitosamente {}", userId);
+
+        try {
+            UserEvent event = new UserEvent(UserEventType.USER_DELETED.name(), userId, null, null, null, null);
+            kafkaTemplate.send(USER_EVENTS_TOPIC, userId, objectMapper.writeValueAsString(event));
+        } catch (Exception e) {
+            log.error("fallo el deleteAcc Kafka {}", userId, e);
+        }
         return true;
     }
 
@@ -137,6 +155,13 @@ public class AuthServiceImpl implements AuthService {
         redisTemplate.opsForValue().set("reset:" + token, user.getId(), Duration.ofMinutes(15));
 
         log.info("Mock: http://localhost:3000/reset-password?token={}", token);
+
+        try {
+            UserEvent event = new UserEvent(UserEventType.FORGOT_PASSWORD.name(), user.getId(), user.getEmail(), null, null, token);
+            kafkaTemplate.send(USER_EVENTS_TOPIC, user.getId(), objectMapper.writeValueAsString(event));
+        } catch (Exception e) {
+            log.error("fallo el forgotPass Kafka {}", user.getId(), e);
+        }
 
         return true;
     }
@@ -158,6 +183,14 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
         redisTemplate.delete(key);
         log.info("contraseña restablecida exitosamente {}", userId);
+
+        try {
+            UserEvent event = new UserEvent(UserEventType.PASSWORD_RESET.name(), user.getId(), user.getEmail(), null, null, token);
+            kafkaTemplate.send(USER_EVENTS_TOPIC, user.getId(), objectMapper.writeValueAsString(event));
+        } catch (Exception e) {
+            log.error("fallo el passReset Kafka {}", user.getId(), e);
+        }
+
         return true;
     }
 }

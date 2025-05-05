@@ -3,6 +3,8 @@ type Mutation {
     signIn(signInInput: SignInInputDTO!): AuthResponseDTO!
     logout(token: String!): String
     deleteAccount(token: String!): Boolean!
+    forgotPassword(email: String!): Boolean!
+    resetPassword(token: String!, newPassword: String!): Boolean!
 }
 
 type Query {

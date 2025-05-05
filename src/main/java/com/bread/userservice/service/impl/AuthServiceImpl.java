@@ -4,6 +4,7 @@ import com.bread.userservice.config.JwtProperties;
 import com.bread.userservice.dto.auth.AuthResponseDTO;
 import com.bread.userservice.dto.auth.SignInInputDTO;
 import com.bread.userservice.dto.auth.SignUpInputDTO;
+import com.bread.userservice.exception.CustomGraphQLException;
 import com.bread.userservice.model.User;
 import com.bread.userservice.repository.UserDetailsRepository;
 import com.bread.userservice.repository.UserRepository;
@@ -15,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCrypt;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -29,19 +31,16 @@ public class AuthServiceImpl implements AuthService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final JwtProperties jwtProperties;
     private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public AuthResponseDTO signIn(SignInInputDTO input) {
         User user = userRepository.findByEmail(input.getEmail())
-                .orElseThrow(() -> new RuntimeException("worng credentials"));
-
-        System.out.println("Input password: " + input.getPassword());
-        System.out.println("Stored password (hash): " + user.getPassword());
-        System.out.println("BCrypt result: " + BCrypt.checkpw(input.getPassword(), user.getPassword()));
+                .orElseThrow(CustomGraphQLException::invalidCredentials);
 
         boolean passwordMatches = BCrypt.checkpw(input.getPassword(), user.getPassword());
         if (!passwordMatches) {
-            throw new RuntimeException("wrong credentials");
+            throw CustomGraphQLException.invalidCredentials();
         }
 
         String token = jwtUtils.generateJwtToken(user.getId());
@@ -59,12 +58,11 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponseDTO signUp(SignUpInputDTO input) {
         if (userRepository.existsByEmail(input.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw CustomGraphQLException.userAlreadyExists();
         }
 
         String userId = java.util.UUID.randomUUID().toString();
-        String hashedPassword = org.springframework.security.crypto.bcrypt.BCrypt.hashpw(input.getPassword(),
-                org.springframework.security.crypto.bcrypt.BCrypt.gensalt());
+        String hashedPassword = passwordEncoder.encode(input.getPassword());
 
         User user = User.builder()
                 .id(userId)
@@ -100,7 +98,7 @@ public class AuthServiceImpl implements AuthService {
         String key = "auth:" + token;
         Boolean deleted = redisTemplate.delete(key);
         if (deleted == null || !deleted) {
-            throw new RuntimeException("Token not found");
+            throw CustomGraphQLException.tokenInvalid();
         }
     }
 
@@ -108,7 +106,7 @@ public class AuthServiceImpl implements AuthService {
     public Boolean deleteAccount(String token) {
         String userId = jwtUtils.getUserIdFromJwtToken(token);
         if (!userRepository.existsById(userId)) {
-            throw new RuntimeException("User not found");
+            throw CustomGraphQLException.notFound(userId);
         }
 
         userRepository.deleteById(userId);
@@ -117,4 +115,35 @@ public class AuthServiceImpl implements AuthService {
         return true;
     }
 
+    @Override
+    public boolean forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(CustomGraphQLException::invalidCredentials);
+
+        String token = jwtUtils.generateToken(user.getId(), Duration.ofMinutes(15));
+        redisTemplate.opsForValue().set("reset:" + token, user.getId(), Duration.ofMinutes(15));
+
+        log.info("Mock: http://localhost:3000/reset-password?token={}", token);
+
+        return true;
+    }
+
+    @Override
+    public boolean resetPassword(String token, String newPassword) {
+        String key = "reset:" + token;
+        String userId = (String) redisTemplate.opsForValue().get(key);
+
+        if (userId == null) {
+            throw CustomGraphQLException.tokenInvalid();
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> CustomGraphQLException.notFound("User"));
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        redisTemplate.delete(key);
+
+        return true;
+    }
 }

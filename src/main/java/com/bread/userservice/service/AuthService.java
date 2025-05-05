@@ -9,5 +9,7 @@ public interface AuthService {
     AuthResponseDTO signIn(SignInInputDTO signInInputDTO);
     void logout(String token);
     Boolean deleteAccount(String token);
+    boolean forgotPassword(String email);
+    boolean resetPassword(String token, String newPassword);
 }
 

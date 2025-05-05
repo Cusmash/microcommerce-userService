@@ -1,5 +1,6 @@
 package com.bread.userservice.util;
 
+import java.time.Duration;
 import java.util.Date;
 
 import org.springframework.stereotype.Component;
@@ -46,5 +47,17 @@ public class JwtUtils {
                  UnsupportedJwtException | IllegalArgumentException e) {
             return false;
         }
+    }
+
+    public String generateToken(String userId, Duration duration) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + duration.toMillis());
+    
+        return Jwts.builder()
+                .setSubject(userId)
+                .setIssuedAt(now)
+                .setExpiration(expiry)
+                .signWith(SignatureAlgorithm.HS512, jwtProperties.getSecret())
+                .compact();
     }
 }

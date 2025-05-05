@@ -36,4 +36,13 @@ public class AuthController {
         return authService.deleteAccount(token);
     }
 
+    @MutationMapping
+    public boolean forgotPassword(@Argument String email) {
+        return authService.forgotPassword(email);
+    }
+
+    @MutationMapping
+    public boolean resetPassword(@Argument String token, @Argument String newPassword) {
+        return authService.resetPassword(token, newPassword);
+    }
 }

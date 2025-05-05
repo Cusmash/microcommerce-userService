@@ -2,23 +2,26 @@ package com.bread.userservice.exception;
 
 import graphql.GraphQLError;
 import graphql.GraphqlErrorBuilder;
-import java.util.Map;
+import graphql.schema.DataFetchingEnvironment;
 import org.springframework.graphql.execution.DataFetcherExceptionResolverAdapter;
 import org.springframework.stereotype.Component;
-import graphql.schema.DataFetchingEnvironment;
+import java.util.Map;
 
 @Component
 public class GraphQLExceptionResolver extends DataFetcherExceptionResolverAdapter {
     @Override
-    protected GraphQLError resolveToSingleError(Throwable ex, DataFetchingEnvironment env) {
-        if (ex instanceof CustomGraphQLException customEx) {
+    protected GraphQLError resolveToSingleError(Throwable exception, DataFetchingEnvironment env) {
+        if (exception instanceof CustomGraphQLException e) {
             return GraphqlErrorBuilder.newError(env)
-                    .message(customEx.getMessage())
+                    .message(e.getMessage())
                     .errorType(graphql.ErrorType.ValidationError)
-                    .extensions(Map.of("code", customEx.getCode()))
+                    .extensions(Map.of("code", e.getCode()))
                     .build();
         }
 
-        return null;
+        return GraphqlErrorBuilder.newError(env)
+                .message("Internal server error")
+                .errorType(graphql.ErrorType.DataFetchingException)
+                .build();
     }
 }

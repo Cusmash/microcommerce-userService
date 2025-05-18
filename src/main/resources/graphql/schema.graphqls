@@ -5,6 +5,7 @@ type Mutation {
     deleteAccount(token: String!): Boolean!
     forgotPassword(email: String!): Boolean!
     resetPassword(token: String!, newPassword: String!): Boolean!
+    isEmailAvailable(email: String!): Boolean!
 }
 
 type Query {

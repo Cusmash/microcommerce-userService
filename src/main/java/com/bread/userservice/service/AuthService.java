@@ -11,5 +11,6 @@ public interface AuthService {
     Boolean deleteAccount(String token);
     boolean forgotPassword(String email);
     boolean resetPassword(String token, String newPassword);
+    boolean isEmailAvailable(String email);
 }
 

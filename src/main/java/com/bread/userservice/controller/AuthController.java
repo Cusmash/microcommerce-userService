@@ -45,4 +45,9 @@ public class AuthController {
     public boolean resetPassword(@Argument String token, @Argument String newPassword) {
         return authService.resetPassword(token, newPassword);
     }
+
+    @MutationMapping
+    public boolean isEmailAvailable(@Argument String email) {
+        return authService.isEmailAvailable(email);
+    }
 }
